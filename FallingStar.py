@@ -183,28 +183,29 @@ class DQNAgent:
         if self.epsilon > np.random.rand():
             actionList = []
             actionList.append(np.random.randint(0, self.action_size))
-            return ConversionDataType.ConvertList2DiscreteAction(actionList, behavior_name)
+            return actionList
 
     def get_action_from_vector_observation(self, vec_obs, behavior_name):
         #return action_tuple
         if self.epsilon > np.random.rand():
             actionList = []
             actionList.append(np.random.randint(0, self.action_size))
-            action = ConversionDataType.ConvertList2DiscreteAction(actionList, behavior_name)
-            return action
+            return actionList
 
     def append_sample(self, vec_obs, vis_obs, action, reward, n_vec_obs, n_vis_obs, done):
         #append_sample
         '''
         print(type(vec_obs), np.shape(vec_obs)) >>> <class 'numpy.ndarray'> (1, 81)
         print(type(vis_obs), np.shape(vis_obs)) >>> <class 'numpy.ndarray'> (1, 84, 84, 9)
-        print(type(action)) >>> <class 'mlagents_envs.base_env.ActionTuple'>
+        print(type(action), action) >>> <class 'list'> [2]
         print(type(reward)) >>> <class 'numpy.float32'>
         '''
         self.memory.append((vec_obs[0], vis_obs[0], action, reward, n_vec_obs[0], n_vis_obs[0], done))
 
     
     def train_model(self):
+
+        
         loss = 0
         return loss
 
@@ -282,7 +283,8 @@ if __name__ == "__main__":
                 vec_observations[behavior_name_Num] = vec_observation
                 vis_observations[behavior_name_Num] = vis_observation
                 action = DQNAgent.get_action_from_vector_observation(vec_observation, behavior_name)
-                env.set_actions(behavior_name, action)
+                actionTuple = ConversionDataType.ConvertList2DiscreteAction(action,behavior_name)
+                env.set_actions(behavior_name, actionTuple)
                 actions[behavior_name_Num] = action
 
             env.step()
