@@ -85,6 +85,7 @@ public class FallingStarAgent : Agent
 
     public override void OnEpisodeBegin()
     {
+        this.transform.position = Env.transform.position;
         foreach (GameObject star in stars)
         {
             DestroyImmediate(star.gameObject);
