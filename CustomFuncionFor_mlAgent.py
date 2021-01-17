@@ -41,6 +41,43 @@ class ConversionDataType:
 
         return action
 
+    def ChangeArrayDimentionOrder_forPytorch(self, arrlist):
+        '''
+        input data shape(batch_size, width, height, channel)
+        output data shape(batch_size, channel, width, height)
+
+        input_data_type : list
+        output_data_type : array
+
+        because pyTorch expect data shape:(batch_size, channel, width, height)
+        use this before input data to pytorch
+        '''
+        for index, arr in enumerate(arrlist):
+            arr = self.sliceVisualObservation_ChannelLevel(arr, 1)
+            arrlist[index] =  np.squeeze(np.array(arr), axis = 3)
+        arrlist = (np.array(arrlist, dtype='float32')-(255.0/2))/(255.0/2)
+        return arrlist
+
+    def sliceVisualObservation_ChannelLevel(self, vis_obs, stacked_data_num):
+        '''
+        input shape: (width, height, channel*stacked_data_num)
+        output shape: (stacked_data_num, width, height, channel)
+
+        input datatype is numpy array
+        output datatype is list with numpy array
+        '''
+        vis_obs_shape = np.shape(vis_obs)
+        vis_obs_list = []
+        if(int(vis_obs_shape[2]/stacked_data_num)==3):
+            for i in range(int(vis_obs_shape[2]/stacked_data_num)):
+                vis_obs_list.append(vis_obs[:,:,i*3:(i+1)*3])
+        if(int(stacked_data_num)==1):
+            for i in range(int(vis_obs_shape[2]/stacked_data_num)):
+                vis_obs_list.append(vis_obs[:,:,i:(i+1)])
+        
+        return vis_obs_list
+
+
 
     def delete_last_char(self, message):
         message = message[:-1]
@@ -73,7 +110,7 @@ class AgentsHelper:
 
         output datatype is numpy array
 
-        if terminal_steps.observations are exist, They overWrite decision_steps.observation
+        if terminal_steps.observations are exist, They overWrite decision_steps.observations
         '''
         decision_steps, terminal_steps = self.env.get_steps(behavior_name)
         spec = self.env.behavior_specs[behavior_name]
@@ -121,8 +158,9 @@ class AgentsHelper:
 
         output datatype is numpy array
 
-        if terminal_steps.observations are exist, They overWrite decision_steps.observation
-        use this function if vis_observation count is 1 per agent
+        if terminal_steps.observations are exist, They overWrite decision_steps.observations
+
+        use this getObservation_lite if vis_observation count is 1 per agent
         use less memory than getObservation()
         '''
         decision_steps, terminal_steps = self.env.get_steps(behavior_name)
@@ -177,25 +215,6 @@ class AgentsHelper:
     def SendMessageToEnv(self, message):
         self.string_log.send_string(message)
         self.env.step()
-
-    def sliceVisualObservation_ChannelLevel(self, vis_obs, stacked_data_num):
-        '''
-        input shape: (width, height, channel*stacked_data_num)
-        output shape: (stacked_data_num, width, height, channel)
-
-        input datatype is numpy array
-        output datatype is list with numpy array
-        '''
-        vis_obs_shape = np.shape(vis_obs)
-        vis_obs_list = []
-        if(int(vis_obs_shape[2]/stacked_data_num)==3):
-            for i in range(int(vis_obs_shape[2]/stacked_data_num)):
-                vis_obs_list.append(vis_obs[:,:,i*3:(i+1)*3])
-        if(int(vis_obs_shape[2]/stacked_data_num)==1):
-            for i in range(int(vis_obs_shape[2]/stacked_data_num)):
-                vis_obs_list.append(vis_obs[:,:,i:(i+1)])
-        
-        return vis_obs_list
 
     def saveArrayAsImagefile(self, array):
         '''

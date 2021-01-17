@@ -24,7 +24,7 @@ env_path = "./FallingStar/Build/"+game
 date_time = datetime.datetime.now().strftime("%Y%m%d-%H-%M-%S")
 save_path = "./saved_model/"+game+"/"+date_time+"_DQN/model/"
 os.makedirs(save_path)
-load_path = "./saved_model/"+game+"/20210117-16-15-07_DQN/model/state_dict_model.pt"
+load_path = "./saved_model/"+game+"/20210117-16-15-07_DQN/model/"
 env = UnityEnvironment(file_name = env_path, side_channels = [string_log])
 env.reset()
 behavior_names = list(env.behavior_specs)
@@ -41,7 +41,7 @@ totalEpisodeCount = minEpisodeCount + trainEpisodeCount + testEpisodeCount
 trainEpisodeCount +=minEpisodeCount
 
 train_mode = True
-load_model = True
+load_model = False
 
 init_epsilon = 1.0
 min_epsilon = 0.1
@@ -55,6 +55,8 @@ max_env_level = 2
 print_episode_interval = 3
 save_episode_interval = 3
 target_update_step = 10000
+
+actionWith_visModelPredict = False
 
 
 class VecModel(nn.Module):
@@ -81,6 +83,44 @@ class VecModel(nn.Module):
         out = out.detach().cpu().numpy()
         return out
 
+class VisModel(nn.Module):
+    def __init__(self):
+        super(VisModel, self).__init__()
+        self.convlayer = nn.Sequential(
+            nn.Conv2d(9,16,5),
+            nn.ReLU(),
+            nn.Conv2d(16,32,5),
+            nn.ReLU(),
+            nn.MaxPool2d(2,2),
+            nn.Conv2d(32,64,5),
+            nn.ReLU(),
+            nn.MaxPool2d(2,2),
+        )
+        self.layer = nn.Sequential(
+            nn.Linear(18496,512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512,256),
+            nn.ReLU(),
+            nn.Linear(256,action_size),
+        )
+    
+    def forward(self, x):
+        out = self.convlayer(x)
+        out = out.view(batch_size,-1)
+        out = self.layer(out)
+        out = out.detach().cpu().numpy()
+        return out
+
+    def predict(self, x):
+        out = self.convlayer(x)
+        out = out.view(batch_size,-1)
+        out = self.layer(out)
+        out = out.argmax()
+        out = out.detach().cpu().numpy()
+        return out
+
 class DQNAgent:
     def __init__(self):
         self.AgentsHelper = AgentsHelper
@@ -98,19 +138,29 @@ class DQNAgent:
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.VecModel = VecModel().to(self.device)
+        self.VisModel = VisModel().to(self.device)
         self.targetVecModel = VecModel().to(self.device)
+        self.targetVisModel = VisModel().to(self.device)
         self.loss_func = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.VecModel.parameters(), lr = self.lr)
+        self.vis_optimizer = torch.optim.Adam(self.VisModel.parameters(), lr = self.lr)
 
         if self.load_model == True:
             print("model loaded!")
-            self.VecModel.load_state_dict(torch.load(self.load_path))
+            self.VecModel.load_state_dict(torch.load(self.load_path+"state_dict_model.pt"))
+            self.VisModel.load_state_dict(torch.load(self.load_path+"vis_state_dict_model.pt"))
 
     def get_action_from_visual_observation(self, vis_obs, behavior_name):
         #return action_tuple
         if self.epsilon > np.random.rand():
             actionList = []
             actionList.append(np.random.randint(0, self.action_size))
+            return actionList
+        else:
+            vis_obs = self.ConversionDataType.ChangeArrayDimentionOrder_forPytorch(vis_obs)
+            result = self.VisModel.predict(torch.tensor(vis_obs).to(self.device))
+            actionList = []
+            actionList.append(result)
             return actionList
 
     def get_action_from_vector_observation(self, vec_obs, behavior_name):
@@ -119,7 +169,6 @@ class DQNAgent:
             actionList = []
             actionList.append(np.random.randint(0, self.action_size))
             return actionList
-        
         else:
             result = self.VecModel.predict(torch.tensor(vec_obs).to(self.device))
             actionList = []
@@ -155,8 +204,26 @@ class DQNAgent:
             next_vec_observations.append(mini_batch[i][4])
             next_vis_observations.append(mini_batch[i][5])
             dones.append(mini_batch[i][6])
+
+        vis_observations = self.ConversionDataType.ChangeArrayDimentionOrder_forPytorch(vis_observations)
+        next_vis_observations = self.ConversionDataType.ChangeArrayDimentionOrder_forPytorch(next_vis_observations)
+        target = self.VisModel.forward(torch.tensor(vis_observations).to(self.device))
+        origintarget = target.copy()
+        target_val = self.targetVisModel.forward(torch.tensor(next_vis_observations).to(self.device))
+
+        for i in range(batch_size):
+            if dones[i]:
+                target[i][actions[i]] = rewards[i]
+            else:
+                target[i][actions[i]] = rewards[i] + self.discount_factor * np.amax(target_val[i])
         
-        loss = 0
+        self.vis_optimizer.zero_grad()
+        loss = self.loss_func(torch.tensor(origintarget).to(self.device), torch.tensor(target).to(self.device))
+        loss.requires_grad = True
+        loss.backward()
+        self.vis_optimizer.step()
+        
+        loss = loss.detach().cpu().numpy()
         return loss
 
     def train_vec_model(self, done):
@@ -231,6 +298,7 @@ if __name__ == "__main__":
     #Epsode Count increase when Agent0's episode is end
     totalStep = 0
     episodelosses = []
+    vis_episodelosses = []
     episodeRewards = []
     for i in range(NumOfAgent):
         episodeRewards.append(0)
@@ -251,7 +319,10 @@ if __name__ == "__main__":
                 vec_observation, vis_observation, done = AgentsHelper.getObservation_lite(behavior_name)
                 vec_observations[behavior_name_Num] = vec_observation
                 vis_observations[behavior_name_Num] = vis_observation
-                action = DQNAgent.get_action_from_vector_observation(vec_observation, behavior_name)
+                if actionWith_visModelPredict == False:
+                    action = DQNAgent.get_action_from_vector_observation(vec_observation, behavior_name)
+                else:
+                    action = DQNAgent.get_action_from_visual_observation(vis_observation, behavior_name)
                 actionTuple = ConversionDataType.ConvertList2DiscreteAction(action,behavior_name)
                 env.set_actions(behavior_name, actionTuple)
                 actions[behavior_name_Num] = action
@@ -288,19 +359,23 @@ if __name__ == "__main__":
 
             if episodeCount>minEpisodeCount and train_mode == True:
                 loss = DQNAgent.train_vec_model(dones[0])
+                vis_loss = DQNAgent.train_vis_model(dones[0])
                 episodelosses.append(loss)
+                vis_episodelosses.append(loss)
 
                 if totalStep % (target_update_step) == 0:
                     DQNAgent.updateTarget()
         
         if episodeCount % save_episode_interval == 0 and episodeCount !=0:
             torch.save(DQNAgent.VecModel.state_dict(), save_path+"state_dict_model.pt")
+            torch.save(DQNAgent.VisModel.state_dict(), save_path+"vis_state_dict_model.pt")
 
         if episodeCount % print_episode_interval == 0 and episodeCount !=0:
-            print("episode:{}-step:{}//average loss = {:.3f}, average rewards = {:.2f}|{:.2f}|{:.2f}, epsilon = {:.4f}".format(
+            print("episode:{}-step:{}//average loss = {:.3f}/vis_loss = {:.3f}, average rewards = {:.2f}|{:.2f}|{:.2f}, epsilon = {:.4f}".format(
                 episodeCount,
                 totalStep,
-                np.mean(episodelosses), 
+                np.mean(episodelosses),
+                np.mean(vis_episodelosses), 
                 np.mean(episodeRewards[0]), 
                 np.mean(episodeRewards[1]), 
                 np.mean(episodeRewards[2]), 
