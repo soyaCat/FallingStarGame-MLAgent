@@ -83,9 +83,10 @@ class ConversionDataType:
         return message
 
 class AgentsHelper:
-    def __init__(self, Env, string_log):
+    def __init__(self, Env, string_log, ConversionDataType):
         self.env = Env
         self.string_log = string_log
+        self.ConversionDataType = ConversionDataType
     def print_specs_of_Agents(self, behavior_names):
         for behavior_name in behavior_names:
             spec = self.env.behavior_specs[behavior_name]
@@ -207,7 +208,7 @@ class AgentsHelper:
         print(env_modes)
         for index, env_mode in enumerate(env_modes):
             sendMessage +=str(index) + "?" + str(env_mode)+"/"
-        sendMessage = ConversionDataType.delete_last_char(sendMessage)
+        sendMessage = self.ConversionDataType.delete_last_char(sendMessage)
         self.string_log.send_string("@" + sendMessage)
         self.env.step()
 

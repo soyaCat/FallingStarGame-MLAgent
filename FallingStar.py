@@ -29,13 +29,14 @@ env = UnityEnvironment(file_name = env_path, side_channels = [string_log])
 env.reset()
 behavior_names = list(env.behavior_specs)
 ConversionDataType = CF.ConversionDataType()
-AgentsHelper = CF.AgentsHelper(env, string_log)
+AgentsHelper = CF.AgentsHelper(env, string_log, ConversionDataType)
 AgentsHelper.print_specs_of_Agents(behavior_names)
 
 #Set Parameters...
 minEpisodeCount = 3
 trainEpisodeCount = 1000
 testEpisodeCount = 1000
+levelUpEpisodeCount = 200
 
 totalEpisodeCount = minEpisodeCount + trainEpisodeCount + testEpisodeCount
 trainEpisodeCount +=minEpisodeCount
@@ -302,6 +303,7 @@ if __name__ == "__main__":
     #run episodes!
     #Epsode Count increase when Agent0's episode is end
     totalStep = 0
+    preLevelUpEpisodeCount = 0
     episodelosses = []
     vis_episodelosses = []
     episodeRewards = []
@@ -391,6 +393,14 @@ if __name__ == "__main__":
             episodeRewards = []
             for i in range(NumOfAgent):
                 episodeRewards.append(0)
+
+        if episodeCount> levelUpEpisodeCount + preLevelUpEpisodeCount:
+            for index, env_mode in enumerate(env_modes):
+                if(env_mode) != max_env_level:
+                    env_modes[index] += 1
+            AgentsHelper.UpdateEnvLevel(env_modes)
+            preLevelUpEpisodeCount = episodeCount
+
         #time2 = tracemalloc.take_snapshot()
         #stats = time2.compare_to(time1,'lineno')
         #for stat in stats[:3]:
