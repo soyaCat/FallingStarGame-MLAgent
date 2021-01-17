@@ -17,6 +17,46 @@ import torch
 import torch.nn as nn
 import CustomFuncionFor_mlAgent as CF
 
+#Env_Setting
+string_log = CF.StringLogChannel()
+game = "FallingStar.exe"
+env_path = "./FallingStar/Build/"+game
+date_time = datetime.datetime.now().strftime("%Y%m%d-%H-%M-%S")
+save_path = "./saved_model/"+game+"/"+date_time+"_DQN/model/"
+os.makedirs(save_path)
+load_path = "./saved_model/"+game+"/20210117-16-15-07_DQN/model/state_dict_model.pt"
+env = UnityEnvironment(file_name = env_path, side_channels = [string_log])
+env.reset()
+behavior_names = list(env.behavior_specs)
+ConversionDataType = CF.ConversionDataType()
+AgentsHelper = CF.AgentsHelper(env, string_log)
+AgentsHelper.print_specs_of_Agents(behavior_names)
+
+#Set Parameters...
+minEpisodeCount = 1
+trainEpisodeCount = 100
+testEpisodeCount = 100
+
+totalEpisodeCount = minEpisodeCount + trainEpisodeCount + testEpisodeCount
+trainEpisodeCount +=minEpisodeCount
+
+train_mode = True
+load_model = True
+
+init_epsilon = 1.0
+min_epsilon = 0.1
+lr = 0.00025
+action_size = 3
+mem_maxlen = 30000
+batch_size = 64
+discount_factor = 0.9
+epsilon_decay = 0.00005
+max_env_level = 2
+print_episode_interval = 3
+save_episode_interval = 3
+target_update_step = 10000
+
+
 class VecModel(nn.Module):
     def __init__(self):
         super(VecModel, self).__init__()
@@ -45,7 +85,7 @@ class DQNAgent:
     def __init__(self):
         self.AgentsHelper = AgentsHelper
         self.ConversionDataType = ConversionDataType
-        self.epsilon = epsilon
+        self.epsilon = init_epsilon
         self.min_epsilon = min_epsilon
         self.epsilon_decay = epsilon_decay
         self.memory = deque(maxlen=mem_maxlen)
@@ -164,45 +204,6 @@ class DQNAgent:
         return loss
 
 if __name__ == "__main__":
-    #Env_Setting
-    string_log = CF.StringLogChannel()
-    game = "FallingStar.exe"
-    env_path = "./FallingStar/Build/"+game
-    date_time = datetime.datetime.now().strftime("%Y%m%d-%H-%M-%S")
-    save_path = "./saved_model/"+game+"/"+date_time+"_DQN/model/"
-    os.makedirs(save_path)
-    load_path = "./saved_model/"+game+"/20210117-16-15-07_DQN/model/state_dict_model.pt"
-    env = UnityEnvironment(file_name = env_path, side_channels = [string_log])
-    env.reset()
-    behavior_names = list(env.behavior_specs)
-    ConversionDataType = CF.ConversionDataType()
-    AgentsHelper = CF.AgentsHelper(env, string_log)
-    AgentsHelper.print_specs_of_Agents(behavior_names)
-
-    #Set Parameters...
-    minEpisodeCount = 1
-    trainEpisodeCount = 100
-    testEpisodeCount = 100
-
-    totalEpisodeCount = minEpisodeCount + trainEpisodeCount + testEpisodeCount
-    trainEpisodeCount +=minEpisodeCount
-
-    train_mode = True
-    load_model = True
-
-    init_epsilon = 1.0
-    min_epsilon = 0.1
-    lr = 0.00025
-    action_size = 3
-    mem_maxlen = 30000
-    batch_size = 64
-    discount_factor = 0.9
-    epsilon_decay = 0.00005
-    max_env_level = 2
-    print_episode_interval = 3
-    save_episode_interval = 3
-    target_update_step = 10000
-
     NumOfAgent = len(behavior_names)
     vec_observations = []
     vis_observations = []
@@ -296,7 +297,8 @@ if __name__ == "__main__":
             torch.save(DQNAgent.VecModel.state_dict(), save_path+"state_dict_model.pt")
 
         if episodeCount % print_episode_interval == 0 and episodeCount !=0:
-            print("step:{}//average loss = {:.3f}, average rewards = {:.2f}|{:.2f}|{:.2f}, epsilon = {:.4f}".format(
+            print("episode:{}-step:{}//average loss = {:.3f}, average rewards = {:.2f}|{:.2f}|{:.2f}, epsilon = {:.4f}".format(
+                episodeCount,
                 totalStep,
                 np.mean(episodelosses), 
                 np.mean(episodeRewards[0]), 
