@@ -79,7 +79,7 @@ public class FallingStarAgent : Agent
             AddReward(reward);
             EndEpisode();
         }
-        reward += 0.1f;
+        reward += 0.005f;
         AddReward(reward);
     }
 
