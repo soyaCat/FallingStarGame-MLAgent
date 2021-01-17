@@ -41,22 +41,21 @@ class ConversionDataType:
 
         return action
 
-    def ChangeArrayDimentionOrder_forPytorch(self, arrlist):
+    def ChangeArrayDimentionOrder_forPytorch(self, arr):
         '''
-        input data shape(batch_size, width, height, channel)
-        output data shape(batch_size, channel, width, height)
+        input data shape(Count, width, height, channel)
+        output data shape(Count, channel, width, height)
+        #The default of Count is 1..
 
-        input_data_type : list
+        input_data_type : array
         output_data_type : array
 
         because pyTorch expect data shape:(batch_size, channel, width, height)
-        use this before input data to pytorch
+        use this after receive visual_observation
         '''
-        for index, arr in enumerate(arrlist):
-            arr = self.sliceVisualObservation_ChannelLevel(arr, 1)
-            arrlist[index] =  np.squeeze(np.array(arr), axis = 3)
-        arrlist = (np.array(arrlist, dtype='float32')-(255.0/2))/(255.0/2)
-        return arrlist
+        arr = np.array(self.sliceVisualObservation_ChannelLevel(arr[0], 1))
+        arr =  np.squeeze(arr, axis = 3)
+        return arr
 
     def sliceVisualObservation_ChannelLevel(self, vis_obs, stacked_data_num):
         '''

@@ -33,7 +33,7 @@ AgentsHelper = CF.AgentsHelper(env, string_log)
 AgentsHelper.print_specs_of_Agents(behavior_names)
 
 #Set Parameters...
-minEpisodeCount = 20
+minEpisodeCount = 3
 trainEpisodeCount = 1000
 testEpisodeCount = 1000
 
@@ -72,12 +72,14 @@ class VecModel(nn.Module):
             nn.Linear(256,action_size),
         )
     
-    def forward(self, x):
+    def forward(self, x, device):
+        x = torch.tensor(x).to(device)
         out = self.layer(x)
         out = out.detach().cpu().numpy()
         return out
 
-    def predict(self, x):
+    def predict(self, x, device):
+        x = torch.tensor(x).to(device)
         out = self.layer(x)
         out = out.argmax()
         out = out.detach().cpu().numpy()
@@ -106,14 +108,18 @@ class VisModel(nn.Module):
             nn.Linear(256,action_size),
         )
     
-    def forward(self, x):
+    def forward(self, x, device):
+        x = (np.array(x, dtype='float32')-(255.0/2))/(255.0/2)
+        x = torch.tensor(x).to(device)
         out = self.convlayer(x)
         out = out.view(batch_size,-1)
         out = self.layer(out)
         out = out.detach().cpu().numpy()
         return out
 
-    def predict(self, x):
+    def predict(self, x, device):
+        x = (np.array(x, dtype='float32')-(255.0/2))/(255.0/2)
+        x = torch.tensor(x).to(device)
         out = self.convlayer(x)
         out = out.view(batch_size,-1)
         out = self.layer(out)
@@ -157,8 +163,7 @@ class DQNAgent:
             actionList.append(np.random.randint(0, self.action_size))
             return actionList
         else:
-            vis_obs = self.ConversionDataType.ChangeArrayDimentionOrder_forPytorch(vis_obs)
-            result = self.VisModel.predict(torch.tensor(vis_obs).to(self.device))
+            result = self.VisModel.predict(vis_obs, self.device)
             actionList = []
             actionList.append(result)
             return actionList
@@ -170,13 +175,13 @@ class DQNAgent:
             actionList.append(np.random.randint(0, self.action_size))
             return actionList
         else:
-            result = self.VecModel.predict(torch.tensor(vec_obs).to(self.device))
+            result = self.VecModel.predict(vec_obs, self.device)
             actionList = []
             actionList.append(result)
             return actionList
 
     def append_sample(self, vec_obs, vis_obs, action, reward, n_vec_obs, n_vis_obs, done):
-        self.memory.append((vec_obs[0], vis_obs[0], action, reward, n_vec_obs[0], n_vis_obs[0], done))
+        self.memory.append((vec_obs[0], vis_obs, action, reward, n_vec_obs[0], n_vis_obs, done))
 
     def updateTarget(self):
         self.targetVecModel.load_state_dict(self.VecModel.state_dict())
@@ -205,11 +210,11 @@ class DQNAgent:
             next_vis_observations.append(mini_batch[i][5])
             dones.append(mini_batch[i][6])
 
-        vis_observations = self.ConversionDataType.ChangeArrayDimentionOrder_forPytorch(vis_observations)
-        next_vis_observations = self.ConversionDataType.ChangeArrayDimentionOrder_forPytorch(next_vis_observations)
-        target = self.VisModel.forward(torch.tensor(vis_observations).to(self.device))
+        vis_observations = np.array(vis_observations)
+        next_vis_observations = np.array(next_vis_observations)
+        target = self.VisModel.forward(vis_observations, self.device)
         origintarget = target.copy()
-        target_val = self.targetVisModel.forward(torch.tensor(next_vis_observations).to(self.device))
+        target_val = self.targetVisModel.forward(vis_observations, self.device)
 
         for i in range(batch_size):
             if dones[i]:
@@ -251,9 +256,9 @@ class DQNAgent:
         
         vec_observations = np.array(vec_observations)
         next_vec_observations = np.array(next_vec_observations)
-        target = self.VecModel.forward(torch.tensor(vec_observations).to(self.device))
+        target = self.VecModel.forward(vec_observations, self.device)
         origintarget = target.copy()
-        target_val = self.targetVecModel.forward(torch.tensor(next_vec_observations).to(self.device))
+        target_val = self.targetVecModel.forward(vec_observations, self.device)
 
         for i in range(batch_size):
             if dones[i]:
@@ -317,6 +322,7 @@ if __name__ == "__main__":
                 decision_steps, terminal_steps = env.get_steps(behavior_name)
                 behavior_name_Num = ConversionDataType.ConvertBehaviorname2Num(behavior_name)
                 vec_observation, vis_observation, done = AgentsHelper.getObservation_lite(behavior_name)
+                vis_observation = ConversionDataType.ChangeArrayDimentionOrder_forPytorch(vis_observation)
                 vec_observations[behavior_name_Num] = vec_observation
                 vis_observations[behavior_name_Num] = vis_observation
                 if actionWith_visModelPredict == False:
@@ -333,6 +339,7 @@ if __name__ == "__main__":
                 decision_steps, terminal_steps = env.get_steps(behavior_name)
                 behavior_name_Num = ConversionDataType.ConvertBehaviorname2Num(behavior_name)
                 next_vec_observation, next_vis_observation, done = AgentsHelper.getObservation_lite(behavior_name)
+                next_vis_observation = ConversionDataType.ChangeArrayDimentionOrder_forPytorch(next_vis_observation)
                 next_vec_observations[behavior_name_Num] = next_vec_observation
                 next_vis_observations[behavior_name_Num] = next_vis_observation
                 reward = AgentsHelper.get_reward(behavior_name)
@@ -361,7 +368,7 @@ if __name__ == "__main__":
                 loss = DQNAgent.train_vec_model(dones[0])
                 vis_loss = DQNAgent.train_vis_model(dones[0])
                 episodelosses.append(loss)
-                vis_episodelosses.append(loss)
+                vis_episodelosses.append(vis_loss)
 
                 if totalStep % (target_update_step) == 0:
                     DQNAgent.updateTarget()
