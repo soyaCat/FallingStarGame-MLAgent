@@ -42,33 +42,19 @@ class VecModel(nn.Module):
         return out
 
 class DQNAgent:
-    def __init__(self, Factorlist):
-        '''
-        DQNAgentFactorlist.append(AgentsHelper)
-        DQNAgentFactorlist.append(ConversionDataType)
-        DQNAgentFactorlist.append(init_epsilon)
-        DQNAgentFactorlist.append(min_epsilon)
-        DQNAgentFactorlist.append(epsilon_decay)
-        DQNAgentFactorlist.append(mem_maxlen)
-        DQNAgentFactorlist.append(action_size)
-        DQNAgentFactorlist.append(batch_size)
-        DQNAgentFactorlist.append(discount_factor)
-        DQNAgentFactorlist.append(lr)
-        DQNAgemtFactorlist.append(load_model)
-        DQNAgentFactorlist.append(load_path)
-        '''
-        self.AgentsHelper = Factorlist[0]
-        self.ConversionDataType = Factorlist[1]
-        self.epsilon = Factorlist[2]
-        self.min_epsilon = Factorlist[3]
-        self.epsilon_decay = Factorlist[4]
-        self.memory = deque(maxlen=Factorlist[5])
-        self.action_size = Factorlist[6]
-        self.batch_size = Factorlist[7]
-        self.discount_factor = Factorlist[8]
-        self.lr = Factorlist[9]
-        self.load_model = Factorlist[10]
-        self.load_path = Factorlist[11]
+    def __init__(self):
+        self.AgentsHelper = AgentsHelper
+        self.ConversionDataType = ConversionDataType
+        self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
+        self.epsilon_decay = epsilon_decay
+        self.memory = deque(maxlen=mem_maxlen)
+        self.action_size = action_size
+        self.batch_size = batch_size
+        self.discount_factor = discount_factor
+        self.lr = lr
+        self.load_model = load_model
+        self.load_path = load_path
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.VecModel = VecModel().to(self.device)
@@ -101,13 +87,6 @@ class DQNAgent:
             return actionList
 
     def append_sample(self, vec_obs, vis_obs, action, reward, n_vec_obs, n_vis_obs, done):
-        #append_sample
-        '''
-        print(type(vec_obs), np.shape(vec_obs)) >>> <class 'numpy.ndarray'> (1, 81)
-        print(type(vis_obs), np.shape(vis_obs)) >>> <class 'numpy.ndarray'> (1, 84, 84, 9)
-        print(type(action), action) >>> <class 'list'> [2]
-        print(type(reward)) >>> <class 'numpy.float32'>
-        '''
         self.memory.append((vec_obs[0], vis_obs[0], action, reward, n_vec_obs[0], n_vis_obs[0], done))
 
     def updateTarget(self):
@@ -163,7 +142,6 @@ class DQNAgent:
             next_vis_observations.append(mini_batch[i][5])
             dones.append(mini_batch[i][6])
         
-
         vec_observations = np.array(vec_observations)
         next_vec_observations = np.array(next_vec_observations)
         target = self.VecModel.forward(torch.tensor(vec_observations).to(self.device))
@@ -175,13 +153,6 @@ class DQNAgent:
                 target[i][actions[i]] = rewards[i]
             else:
                 target[i][actions[i]] = rewards[i] + self.discount_factor * np.amax(target_val[i])
-
-        '''
-        FallingStar.py:322: FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; 
-        use `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array index, 
-        `arr[np.array(seq)]`, which will result either in an error or a different result.
-        target[i][actions[i]] = rewards[i] + self.discount_factor * np.amax(target_val[i])
-        '''
         
         self.optimizer.zero_grad()
         loss = self.loss_func(torch.tensor(origintarget).to(self.device), torch.tensor(target).to(self.device))
@@ -251,28 +222,13 @@ if __name__ == "__main__":
         rewards.append(0)
         dones.append(False)
         env_modes.append(0)
-    
-    DQNAgentFactorlist = []
-    DQNAgentFactorlist.append(AgentsHelper)
-    DQNAgentFactorlist.append(ConversionDataType)
-    DQNAgentFactorlist.append(init_epsilon)
-    DQNAgentFactorlist.append(min_epsilon)
-    DQNAgentFactorlist.append(epsilon_decay)
-    DQNAgentFactorlist.append(mem_maxlen)
-    DQNAgentFactorlist.append(action_size)
-    DQNAgentFactorlist.append(batch_size)
-    DQNAgentFactorlist.append(discount_factor)
-    DQNAgentFactorlist.append(lr)
-    DQNAgentFactorlist.append(load_model)
-    DQNAgentFactorlist.append(load_path)
-    
-    DQNAgent = DQNAgent(DQNAgentFactorlist)
+
+    DQNAgent = DQNAgent()
     AgentsHelper.SendMessageToEnv("Env Connection Test")
 
     #run episodes!
-    #에피소드 카운트가 늘어나는 기준은 0번 에이전트의 에피소드가 종료 될 때마다이다.
+    #Epsode Count increase when Agent0's episode is end
     totalStep = 0
-    
     episodelosses = []
     episodeRewards = []
     for i in range(NumOfAgent):
@@ -356,30 +312,4 @@ if __name__ == "__main__":
         #for stat in stats[:3]:
             #print(stat)
 
-
-
-            
-        
-
-
-
-    '''
-    for i in range(200):
-        for behavior_name in behavior_names:
-            decision_steps, terminal_steps = env.get_steps(behavior_name)
-            behavior_name_Num = ConversionDataType.ConvertBehaviorname2Num(behavior_name)
-            vec_observation, vis_observation = AgentsHelper.getObservation(behavior_name)
-            vec_observations[behavior_name_Num] = vec_observation
-            vis_observations[behavior_name_Num] = vis_observation
-        #print("vec_observations_shape: ", np.shape(vec_observations))#  >>>(3,1,81)
-        #print("vis_observations_shape ", np.shape(vis_observations))#  >>>(3,1,84,84,9)
-
-        sendMessage = ""
-        for index, env_mode in enumerate(env_modes):
-            sendMessage +=str(index) + "?" + str(env_mode)+"/"
-        sendMessage = ConversionDataType.delete_last_char(sendMessage)
-        string_log.send_string("@" + sendMessage)
-        env.step()
-
-    '''
     env.close()
