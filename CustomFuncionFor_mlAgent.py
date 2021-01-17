@@ -31,7 +31,7 @@ class ConversionDataType:
     def ConvertList2DiscreteAction(self, arr, behavior_name):
         '''
         input data type = list -> ex)[3]
-                !!! Dont Input 2D Array or list like [(0,2)], just input like [0,2]
+                !!! Don't Input 2D Array or list like [(0,2)], just input like [0,2]
         output data type = Actiontuple
         '''
         actionList = []

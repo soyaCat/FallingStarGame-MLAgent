@@ -33,9 +33,9 @@ AgentsHelper = CF.AgentsHelper(env, string_log)
 AgentsHelper.print_specs_of_Agents(behavior_names)
 
 #Set Parameters...
-minEpisodeCount = 1
-trainEpisodeCount = 100
-testEpisodeCount = 100
+minEpisodeCount = 20
+trainEpisodeCount = 1000
+testEpisodeCount = 1000
 
 totalEpisodeCount = minEpisodeCount + trainEpisodeCount + testEpisodeCount
 trainEpisodeCount +=minEpisodeCount
@@ -52,8 +52,8 @@ batch_size = 64
 discount_factor = 0.9
 epsilon_decay = 0.00005
 max_env_level = 2
-print_episode_interval = 3
-save_episode_interval = 3
+print_episode_interval = 50
+save_episode_interval = 200
 target_update_step = 10000
 
 actionWith_visModelPredict = False
