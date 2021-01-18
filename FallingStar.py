@@ -33,7 +33,7 @@ AgentsHelper = CF.AgentsHelper(env, string_log, ConversionDataType)
 AgentsHelper.print_specs_of_Agents(behavior_names)
 
 #Set Parameters...
-minEpisodeCount = 3
+minEpisodeCount = 20
 trainEpisodeCount = 1000
 testEpisodeCount = 1000
 levelUpEpisodeCount = 200
@@ -54,7 +54,7 @@ discount_factor = 0.9
 epsilon_decay = 0.00005
 max_env_level = 2
 print_episode_interval = 50
-save_episode_interval = 200
+save_episode_interval = 100
 target_update_step = 10000
 
 actionWith_visModelPredict = False
@@ -286,7 +286,6 @@ if __name__ == "__main__":
     rewards = []
     dones = []
     env_modes = []
-    print(NumOfAgent)
     for i in range(NumOfAgent):
         vec_observations.append(0)
         vis_observations.append(0)
@@ -313,7 +312,6 @@ if __name__ == "__main__":
     #tracemalloc.start(10)
     for episodeCount in range(totalEpisodeCount):
         #time1 = tracemalloc.take_snapshot()
-        print("episodeCount+")
         dones[0] = False
         if episodeCount > trainEpisodeCount:
             train_mode = False
@@ -374,10 +372,11 @@ if __name__ == "__main__":
 
                 if totalStep % (target_update_step) == 0:
                     DQNAgent.updateTarget()
-        
+
         if episodeCount % save_episode_interval == 0 and episodeCount !=0:
             torch.save(DQNAgent.VecModel.state_dict(), save_path+"state_dict_model.pt")
             torch.save(DQNAgent.VisModel.state_dict(), save_path+"vis_state_dict_model.pt")
+            print("Model saved..")
 
         if episodeCount % print_episode_interval == 0 and episodeCount !=0:
             print("episode:{}-step:{}//average loss = {:.3f}/vis_loss = {:.3f}, average rewards = {:.2f}|{:.2f}|{:.2f}, epsilon = {:.4f}".format(
@@ -398,6 +397,7 @@ if __name__ == "__main__":
             for index, env_mode in enumerate(env_modes):
                 if(env_mode) != max_env_level:
                     env_modes[index] += 1
+            print("Env Level updated..")
             AgentsHelper.UpdateEnvLevel(env_modes)
             preLevelUpEpisodeCount = episodeCount
 
