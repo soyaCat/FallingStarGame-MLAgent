@@ -30,8 +30,8 @@ class ConversionDataType:
 
     def ConvertList2DiscreteAction(self, arr, behavior_name):
         '''
-        input data type = list -> ex)[3]
-                !!! Don't Input 2D Array or list like [(0,2)], just input like [0,2]
+        input data type = list or 1D array -> ex)[3]
+                !!! Don't Input 2D Array or list like [(0, 2)]
         output data type = Actiontuple
         '''
         actionList = []
@@ -51,27 +51,28 @@ class ConversionDataType:
         output_data_type : array
 
         because pyTorch expect data shape:(batch_size, channel, width, height)
-        use this after receive visual_observation
+        use this after receive visual_observation from env
         '''
         arr = np.array(self.sliceVisualObservation_ChannelLevel(arr[0], 1))
         arr =  np.squeeze(arr, axis = 3)
         return arr
 
-    def sliceVisualObservation_ChannelLevel(self, vis_obs, stacked_data_num):
+    def sliceVisualObservation_ChannelLevel(self, vis_obs, slice_channel_size):
         '''
-        input shape: (width, height, channel*stacked_data_num)
-        output shape: (stacked_data_num, width, height, channel)
+        input shape: (width, height, channel)
+        output shape: (channel/slice_channel_size, width, height, slice_channel_size)
 
         input datatype is numpy array
         output datatype is list with numpy array
         '''
         vis_obs_shape = np.shape(vis_obs)
         vis_obs_list = []
-        if(int(vis_obs_shape[2]/stacked_data_num)==3):
-            for i in range(int(vis_obs_shape[2]/stacked_data_num)):
+        if(int(vis_obs_shape[2]/slice_channel_size)==3):
+            for i in range(int(vis_obs_shape[2]/slice_channel_size)):
                 vis_obs_list.append(vis_obs[:,:,i*3:(i+1)*3])
-        if(int(stacked_data_num)==1):
-            for i in range(int(vis_obs_shape[2]/stacked_data_num)):
+
+        if(int(slice_channel_size)==1):
+            for i in range(int(vis_obs_shape[2]/slice_channel_size)):
                 vis_obs_list.append(vis_obs[:,:,i:(i+1)])
         
         return vis_obs_list
@@ -106,13 +107,12 @@ class AgentsHelper:
         output data shape(vector_observation):
         -> (1, num_of_vec_obs_per_behavior_name*stacked_data_num)
 
-        output datatype is list array for visual_observation(so use index before use it in main_code)
-                        array for vector_observation
+        output datatype(visual_observation)
+            -> list array for visual_observation(so use index before use it in main_code)
+        output datatype(vector_observation)
+            -> array for vector_observation
 
         if terminal_steps.observations are exist, They overWrite decision_steps.observations
-
-        use this getObservation_lite if vis_observation count is 1 per agent
-        use less memory than getObservation()
         '''
         decision_steps, terminal_steps = self.env.get_steps(behavior_name)
         spec = self.env.behavior_specs[behavior_name]
