@@ -1,5 +1,5 @@
 # FallingStarGame-MLAgent
-
+![게임화면](./images/capture.PNG)
 # Purpose of this repositories
 Before using ML_agent-Release12 and pytorch, It is important for me to make easy to use them
 
