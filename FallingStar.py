@@ -323,8 +323,8 @@ if __name__ == "__main__":
             for behavior_name in behavior_names:
                 decision_steps, terminal_steps = env.get_steps(behavior_name)
                 behavior_name_Num = ConversionDataType.ConvertBehaviorname2Num(behavior_name)
-                vec_observation, vis_observation, done = AgentsHelper.getObservation_lite(behavior_name)
-                vis_observation = ConversionDataType.ChangeArrayDimentionOrder_forPytorch(vis_observation)
+                vec_observation, vis_observation_list, done = AgentsHelper.getObservation(behavior_name)
+                vis_observation = vis_observation_list[0]
                 vec_observations[behavior_name_Num] = vec_observation
                 vis_observations[behavior_name_Num] = vis_observation
                 if actionWith_visModelPredict == False:
@@ -340,8 +340,8 @@ if __name__ == "__main__":
             for behavior_name in behavior_names:
                 decision_steps, terminal_steps = env.get_steps(behavior_name)
                 behavior_name_Num = ConversionDataType.ConvertBehaviorname2Num(behavior_name)
-                next_vec_observation, next_vis_observation, done = AgentsHelper.getObservation_lite(behavior_name)
-                next_vis_observation = ConversionDataType.ChangeArrayDimentionOrder_forPytorch(next_vis_observation)
+                next_vec_observation, next_vis_observation_list, done = AgentsHelper.getObservation(behavior_name)
+                next_vis_observation = next_vis_observation_list[0]
                 next_vec_observations[behavior_name_Num] = next_vec_observation
                 next_vis_observations[behavior_name_Num] = next_vis_observation
                 reward = AgentsHelper.get_reward(behavior_name)

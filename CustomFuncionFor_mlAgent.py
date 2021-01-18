@@ -44,7 +44,7 @@ class ConversionDataType:
     def ChangeArrayDimentionOrder_forPytorch(self, arr):
         '''
         input data shape(Count, width, height, channel)
-        output data shape(Count, channel, width, height)
+        output data shape(channel, width, height)
         #The default of Count is 1..
 
         input_data_type : array
@@ -76,8 +76,6 @@ class ConversionDataType:
         
         return vis_obs_list
 
-
-
     def delete_last_char(self, message):
         message = message[:-1]
         return message
@@ -101,62 +99,15 @@ class AgentsHelper:
         print("Examine finish....")
         print("======================================")
 
-    def getObservation(self, behavior_name): 
+    def getObservation(self, behavior_name):
         '''
         output data shape(visual_observation):
-        -> (num_of_vis_obs_per_behavior_name, vis_obs_width, vis_obs_height, vis_obs_channel*stacked_data_num)
+        -> (num_of_vis_obs_per_behavior_name, vis_obs_chennel, vis_obs_width, vis_obs_height)
         output data shape(vector_observation):
         -> (1, num_of_vec_obs_per_behavior_name*stacked_data_num)
 
-        output datatype is numpy array
-
-        if terminal_steps.observations are exist, They overWrite decision_steps.observations
-        '''
-        decision_steps, terminal_steps = self.env.get_steps(behavior_name)
-        spec = self.env.behavior_specs[behavior_name]
-        done = False
-        vis_obs = []
-        vec_obs = []
-        tr_vis_obs = []
-        tr_vec_obs = []
-        for index, shape in enumerate(spec.observation_shapes):
-            if len(shape) == 3:
-                vis_obs.append(decision_steps.obs[index])
-                tr_vis_obs.append(terminal_steps.obs[index])
-        for index, shape in enumerate(spec.observation_shapes):
-            if len(shape) == 1:
-                vec_obs.append(decision_steps.obs[index])
-                tr_vec_obs.append(terminal_steps.obs[index])
-
-        if(tr_vec_obs[0].size != 0):
-            vec_obs = tr_vec_obs
-            done = True
-        if(tr_vis_obs[0].size != 0):
-            vis_obs = tr_vis_obs
-            done = True
-        vec_obs_num = len(vec_obs)
-        vis_obs_num = len(vis_obs)
-        vis_obs_shape = np.shape(vis_obs[0])
-
-        for index, vec_obs_Ele in enumerate(vec_obs):
-            vec_obs[index] = vec_obs_Ele.flatten()
-        for index, vis_obs_Ele in enumerate(vis_obs):
-            vis_obs[index] = vis_obs_Ele.flatten()
-        vec_observation = np.array(vec_obs)
-        vis_observation = np.uint8(255*np.array(vis_obs))
-        vec_observation = vec_observation.reshape((vec_obs_num, -1))
-        vis_observation = vis_observation.reshape((vis_obs_num, vis_obs_shape[1],vis_obs_shape[2],vis_obs_shape[3]))
-
-        return vec_observation, vis_observation, done
-
-    def getObservation_lite(self, behavior_name): 
-        '''
-        output data shape(visual_observation):
-        -> (num_of_vis_obs_per_behavior_name, vis_obs_width, vis_obs_height, vis_obs_channel*stacked_data_num)
-        output data shape(vector_observation):
-        -> (1, num_of_vec_obs_per_behavior_name*stacked_data_num)
-
-        output datatype is numpy array
+        output datatype is list array for visual_observation(so use index before use it in main_code)
+                        array for vector_observation
 
         if terminal_steps.observations are exist, They overWrite decision_steps.observations
 
@@ -166,32 +117,28 @@ class AgentsHelper:
         decision_steps, terminal_steps = self.env.get_steps(behavior_name)
         spec = self.env.behavior_specs[behavior_name]
         done = False
-        vis_obs = 0
-        tr_vis_obs = 0
+        vis_obs_list = []
         vec_obs = 0
-        tr_vec_obs = 0
+        
         for index, shape in enumerate(spec.observation_shapes):
             if len(shape) == 3:
-                vis_obs = (decision_steps.obs[index])
-                tr_vis_obs = (terminal_steps.obs[index])
-        for index, shape in enumerate(spec.observation_shapes):
-            if len(shape) == 1:
-                vec_obs = (decision_steps.obs[index])
-                tr_vec_obs = (terminal_steps.obs[index])
-        
-        if(tr_vec_obs.size != 0):
-            vec_obs = tr_vec_obs
-            done = True
-        if(tr_vis_obs.size != 0):
-            vis_obs = tr_vis_obs
-            done = True
-        vis_obs_shape = np.shape(vis_obs)
-        vec_obs = np.array(vec_obs)
-        vis_obs = np.uint8(255*np.array(vis_obs))
-        vec_obs = vec_obs.reshape((1, -1))
-        vis_obs = vis_obs.reshape((1, vis_obs_shape[1],vis_obs_shape[2],vis_obs_shape[3]))
+                if(terminal_steps.obs[index].size != 0):
+                    vis_obs_list.append(terminal_steps.obs[index])
+                    done = True
+                else:
+                    vis_obs_list.append(decision_steps.obs[index])
+            elif len(shape) ==1:
+                if(terminal_steps.obs[index].size != 0):
+                    vec_obs = terminal_steps.obs[index]
+                    done = True
+                else:
+                    vec_obs = decision_steps.obs[index]
 
-        return vec_obs, vis_obs, done
+        for index, vis_obs in enumerate(vis_obs_list):
+            vis_obs = self.ConversionDataType.ChangeArrayDimentionOrder_forPytorch(vis_obs)
+            vis_obs_list[index] = np.uint8(255*vis_obs)
+        
+        return vec_obs, vis_obs_list, done
 
 
     def get_reward(self, behavior_name):
